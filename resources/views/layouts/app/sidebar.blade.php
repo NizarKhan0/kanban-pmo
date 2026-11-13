@@ -39,6 +39,9 @@
             <flux:spacer />
 
             <flux:sidebar.nav>
+                <flux:sidebar.item icon="cog-6-tooth" x-on:click="$dispatch('open-settings-portability')">
+                    {{ __('Settings & Data') }}
+                </flux:sidebar.item>
                 <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
                     {{ __('Repository') }}
                 </flux:sidebar.item>
@@ -107,6 +110,10 @@
         </flux:header>
 
         {{ $slot }}
+
+        @auth
+            <livewire:pmo.settings-portability-modal />
+        @endauth
 
         @persist('toast')
             <flux:toast.group>

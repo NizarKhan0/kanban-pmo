@@ -33,6 +33,7 @@ class DatabaseSeeder extends Seeder
             TaskSeeder::class,
             ActivityLogSeeder::class,
             AiOmnichannelSeeder::class,
+            WorkspaceBackupSeeder::class,
         ]);
     }
 }

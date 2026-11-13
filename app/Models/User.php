@@ -66,6 +66,14 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
+     * @return HasMany<WorkspaceBackup, $this>
+     */
+    public function workspaceBackups(): HasMany
+    {
+        return $this->hasMany(WorkspaceBackup::class);
+    }
+
+    /**
      * @return HasMany<AutomationLog, $this>
      */
     public function automationLogs(): HasMany

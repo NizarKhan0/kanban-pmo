@@ -7,6 +7,7 @@ namespace Database\Seeders;
 use App\Models\Project;
 use App\Models\TeamMember;
 use App\Models\User;
+use Database\Seeders\Concerns\SeedsForOwner;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -16,12 +17,12 @@ use Illuminate\Support\Facades\DB;
  */
 class PmoRosterProjectSeeder extends Seeder
 {
-    private const OWNER_ID = 1;
+    use SeedsForOwner;
 
     public function run(): void
     {
-        if (! User::query()->whereKey(self::OWNER_ID)->exists()) {
-            $this->command?->warn('PmoRosterProjectSeeder skipped: user #'.self::OWNER_ID.' does not exist.');
+        if (! User::query()->whereKey($this->ownerId)->exists()) {
+            $this->command?->warn('PmoRosterProjectSeeder skipped: user #'.$this->ownerId.' does not exist.');
 
             return;
         }
@@ -31,7 +32,7 @@ class PmoRosterProjectSeeder extends Seeder
             $this->seedTeamMembers();
         });
 
-        $this->command?->info('PMO roster seeded: 6 projects, 4 team members for user #'.self::OWNER_ID.'.');
+        $this->command?->info('PMO roster seeded: 6 projects, 4 team members for user #'.$this->ownerId.'.');
     }
 
     private function seedProjects(): void
@@ -53,7 +54,7 @@ class PmoRosterProjectSeeder extends Seeder
 
         foreach ($projects as $index => $project) {
             Project::query()->updateOrCreate(
-                ['user_id' => self::OWNER_ID, 'name' => $project['name']],
+                ['user_id' => $this->ownerId, 'name' => $project['name']],
                 [...$project, 'sort_order' => $index + 1],
             );
         }
@@ -74,14 +75,14 @@ class PmoRosterProjectSeeder extends Seeder
 
         foreach ($members as $index => $member) {
             TeamMember::query()->updateOrCreate(
-                ['user_id' => self::OWNER_ID, 'name' => $member['name']],
+                ['user_id' => $this->ownerId, 'name' => $member['name']],
                 [...$member, 'is_me' => false, 'is_active' => true, 'sort_order' => $index + 1],
             );
         }
 
         // Exactly one "Me" per user.
         TeamMember::query()
-            ->where('user_id', self::OWNER_ID)
+            ->where('user_id', $this->ownerId)
             ->where('name', 'Ikhwan A.')
             ->firstOrFail()
             ->setAsMe();

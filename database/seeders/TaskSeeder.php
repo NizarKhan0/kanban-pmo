@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TeamMember;
 use App\Models\User;
+use Database\Seeders\Concerns\SeedsForOwner;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -21,20 +22,20 @@ use Illuminate\Support\Facades\DB;
  */
 class TaskSeeder extends Seeder
 {
-    private const OWNER_ID = 1;
+    use SeedsForOwner;
 
     public function run(): void
     {
-        if (! User::query()->whereKey(self::OWNER_ID)->exists()) {
-            $this->command?->warn('TaskSeeder skipped: user #'.self::OWNER_ID.' does not exist.');
+        if (! User::query()->whereKey($this->ownerId)->exists()) {
+            $this->command?->warn('TaskSeeder skipped: user #'.$this->ownerId.' does not exist.');
 
             return;
         }
 
-        $columns = BoardColumn::query()->where('user_id', self::OWNER_ID)->pluck('id', 'name');
-        $doneColumns = BoardColumn::query()->where('user_id', self::OWNER_ID)->where('is_done_column', true)->pluck('id')->all();
-        $projects = Project::query()->where('user_id', self::OWNER_ID)->pluck('id', 'name');
-        $members = TeamMember::query()->where('user_id', self::OWNER_ID)->pluck('id', 'name');
+        $columns = BoardColumn::query()->where('user_id', $this->ownerId)->pluck('id', 'name');
+        $doneColumns = BoardColumn::query()->where('user_id', $this->ownerId)->where('is_done_column', true)->pluck('id')->all();
+        $projects = Project::query()->where('user_id', $this->ownerId)->pluck('id', 'name');
+        $members = TeamMember::query()->where('user_id', $this->ownerId)->pluck('id', 'name');
 
         $missing = array_diff(['Backlog', 'To Do', 'In Progress', 'Review', 'Done'], $columns->keys()->all());
         if ($missing !== []) {
@@ -53,7 +54,7 @@ class TaskSeeder extends Seeder
                 $isDone = in_array($columnId, $doneColumns, true);
 
                 $task = Task::query()->updateOrCreate(
-                    ['user_id' => self::OWNER_ID, 'title' => $row['title']],
+                    ['user_id' => $this->ownerId, 'title' => $row['title']],
                     [
                         'board_column_id' => $columnId,
                         'project_id' => $projects[$row['project']] ?? null,
@@ -82,7 +83,7 @@ class TaskSeeder extends Seeder
             }
         });
 
-        $this->command?->info('Tasks seeded: '.count($this->tasks()).' cards for user #'.self::OWNER_ID.'.');
+        $this->command?->info('Tasks seeded: '.count($this->tasks()).' cards for user #'.$this->ownerId.'.');
     }
 
     /**

@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use App\Models\ActivityLog;
 use App\Models\User;
+use Database\Seeders\Concerns\SeedsForOwner;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 
@@ -16,12 +17,12 @@ use Illuminate\Support\Carbon;
  */
 class ActivityLogSeeder extends Seeder
 {
-    private const OWNER_ID = 1;
+    use SeedsForOwner;
 
     public function run(): void
     {
-        if (! User::query()->whereKey(self::OWNER_ID)->exists()) {
-            $this->command?->warn('ActivityLogSeeder skipped: user #'.self::OWNER_ID.' does not exist.');
+        if (! User::query()->whereKey($this->ownerId)->exists()) {
+            $this->command?->warn('ActivityLogSeeder skipped: user #'.$this->ownerId.' does not exist.');
 
             return;
         }
@@ -40,7 +41,7 @@ class ActivityLogSeeder extends Seeder
 
                 ActivityLog::query()
                     ->firstOrNew([
-                        'user_id' => self::OWNER_ID,
+                        'user_id' => $this->ownerId,
                         'action_type' => $entry['action'],
                         'task_title' => $entry['subject'],
                     ])
@@ -54,6 +55,6 @@ class ActivityLogSeeder extends Seeder
             }
         });
 
-        $this->command?->info('Activity log seeded: '.count($entries).' entries for user #'.self::OWNER_ID.'.');
+        $this->command?->info('Activity log seeded: '.count($entries).' entries for user #'.$this->ownerId.'.');
     }
 }

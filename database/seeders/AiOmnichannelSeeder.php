@@ -7,6 +7,7 @@ namespace Database\Seeders;
 use App\Models\AutomationLog;
 use App\Models\SavedAiPrompt;
 use App\Models\User;
+use Database\Seeders\Concerns\SeedsForOwner;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 
@@ -17,12 +18,12 @@ use Illuminate\Support\Carbon;
  */
 class AiOmnichannelSeeder extends Seeder
 {
-    private const OWNER_ID = 1;
+    use SeedsForOwner;
 
     public function run(): void
     {
-        if (! User::query()->whereKey(self::OWNER_ID)->exists()) {
-            $this->command?->warn('AiOmnichannelSeeder skipped: user #'.self::OWNER_ID.' does not exist.');
+        if (! User::query()->whereKey($this->ownerId)->exists()) {
+            $this->command?->warn('AiOmnichannelSeeder skipped: user #'.$this->ownerId.' does not exist.');
 
             return;
         }
@@ -44,7 +45,7 @@ class AiOmnichannelSeeder extends Seeder
 
         foreach ($templates as $index => $template) {
             SavedAiPrompt::query()->updateOrCreate(
-                ['user_id' => self::OWNER_ID, 'title' => $template['title']],
+                ['user_id' => $this->ownerId, 'title' => $template['title']],
                 [...$template, 'sort_order' => $index + 1],
             );
         }
@@ -78,7 +79,7 @@ class AiOmnichannelSeeder extends Seeder
 
                 AutomationLog::query()
                     ->firstOrNew([
-                        'user_id' => self::OWNER_ID,
+                        'user_id' => $this->ownerId,
                         'channel' => $entry['channel'],
                         'command_name' => $entry['command'],
                     ])
@@ -96,6 +97,6 @@ class AiOmnichannelSeeder extends Seeder
             }
         });
 
-        $this->command?->info('AI & Omnichannel seeded: '.count($templates).' prompt templates, '.count($logs).' simulated automation logs for user #'.self::OWNER_ID.'.');
+        $this->command?->info('AI & Omnichannel seeded: '.count($templates).' prompt templates, '.count($logs).' simulated automation logs for user #'.$this->ownerId.'.');
     }
 }

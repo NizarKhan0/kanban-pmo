@@ -15,6 +15,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -56,6 +57,15 @@ class RosterProjectIndex extends Component
 
     #[Locked]
     public int $deleteTotalTasks = 0;
+
+    /**
+     * Re-render after Settings & Data Portability replaced the workspace.
+     */
+    #[On('pmo-workspace-replaced')]
+    public function refreshWorkspace(): void
+    {
+        // Computed properties are rebuilt on the next render.
+    }
 
     // ──────────────────────────────────────────────────────────────────
     // Read

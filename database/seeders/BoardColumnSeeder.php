@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use App\Models\BoardColumn;
 use App\Models\User;
+use Database\Seeders\Concerns\SeedsForOwner;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -15,12 +16,12 @@ use Illuminate\Support\Facades\DB;
  */
 class BoardColumnSeeder extends Seeder
 {
-    private const OWNER_ID = 1;
+    use SeedsForOwner;
 
     public function run(): void
     {
-        if (! User::query()->whereKey(self::OWNER_ID)->exists()) {
-            $this->command?->warn('BoardColumnSeeder skipped: user #'.self::OWNER_ID.' does not exist.');
+        if (! User::query()->whereKey($this->ownerId)->exists()) {
+            $this->command?->warn('BoardColumnSeeder skipped: user #'.$this->ownerId.' does not exist.');
 
             return;
         }
@@ -28,12 +29,12 @@ class BoardColumnSeeder extends Seeder
         DB::transaction(function (): void {
             foreach (BoardColumn::DEFAULTS as $index => $column) {
                 BoardColumn::query()->updateOrCreate(
-                    ['user_id' => self::OWNER_ID, 'name' => $column['name']],
+                    ['user_id' => $this->ownerId, 'name' => $column['name']],
                     [...$column, 'sort_order' => ($index + 1) * BoardColumn::SORT_STEP],
                 );
             }
         });
 
-        $this->command?->info('Kanban board seeded: '.count(BoardColumn::DEFAULTS).' columns for user #'.self::OWNER_ID.'.');
+        $this->command?->info('Kanban board seeded: '.count(BoardColumn::DEFAULTS).' columns for user #'.$this->ownerId.'.');
     }
 }

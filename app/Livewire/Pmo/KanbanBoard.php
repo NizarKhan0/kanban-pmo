@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -109,6 +110,15 @@ class KanbanBoard extends Component
 
     #[Locked]
     public string $deleteSubtaskTitle = '';
+
+    /**
+     * Re-render after Settings & Data Portability replaced the workspace.
+     */
+    #[On('pmo-workspace-replaced')]
+    public function refreshWorkspace(): void
+    {
+        // Computed properties are rebuilt on the next render.
+    }
 
     public function mount(BoardColumnService $service): void
     {
