@@ -58,6 +58,14 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
+     * @return HasMany<BoardColumn, $this>
+     */
+    public function boardColumns(): HasMany
+    {
+        return $this->hasMany(BoardColumn::class);
+    }
+
+    /**
      * @return HasMany<TeamMember, $this>
      */
     public function teamMembers(): HasMany
