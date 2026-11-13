@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
             PmoRosterProjectSeeder::class,
             BoardColumnSeeder::class,
             TaskSeeder::class,
+            ActivityLogSeeder::class,
         ]);
     }
 }

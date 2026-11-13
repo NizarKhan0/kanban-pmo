@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Pmo;
 
+use App\Models\ActivityLog;
 use App\Models\TeamMember;
 use App\Support\TaskTable;
 use Illuminate\Auth\AuthenticationException;
@@ -16,7 +17,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class TeamRosterService
 {
-    public function __construct(private readonly WorkloadCalculator $workload) {}
+    public function __construct(
+        private readonly WorkloadCalculator $workload,
+        private readonly ActivityLogger $activity,
+    ) {}
 
     /**
      * @return Collection<int, TeamMember>
@@ -85,6 +89,8 @@ final class TeamRosterService
                 $member->setAsMe();
             }
 
+            $this->activity->log(ActivityLog::PIC_ADDED, $member->name, $member->role ?? 'Team member added');
+
             return $member;
         });
     }
@@ -115,6 +121,8 @@ final class TeamRosterService
                     ->where('team_member_id', $member->id)
                     ->update(['pic_name_snapshot' => $member->name]);
             }
+
+            $this->activity->log(ActivityLog::UPDATED, $member->name, 'Team member profile updated');
 
             return $member;
         });
@@ -167,6 +175,8 @@ final class TeamRosterService
             }
 
             $member->delete();
+
+            $this->activity->log(ActivityLog::DELETED, $member->name, "Team member removed · {$retained} task card(s) preserved");
 
             return $retained;
         });

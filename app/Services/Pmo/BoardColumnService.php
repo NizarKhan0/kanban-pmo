@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Pmo;
 
 use App\Exceptions\Pmo\BoardColumnException;
+use App\Models\ActivityLog;
 use App\Models\BoardColumn;
 use App\Support\TaskTable;
 use Illuminate\Auth\AuthenticationException;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class BoardColumnService
 {
+    public function __construct(private readonly ActivityLogger $activity) {}
+
     /**
      * @return Collection<int, BoardColumn>
      */
@@ -98,11 +101,19 @@ final class BoardColumnService
         $ownerId = $this->ownerId();
         $max = (int) BoardColumn::query()->where('user_id', $ownerId)->max('sort_order');
 
-        return BoardColumn::query()->create([
+        $column = BoardColumn::query()->create([
             ...$data,
             'user_id' => $ownerId,
             'sort_order' => $this->nextStep($max),
         ]);
+
+        $this->activity->log(
+            ActivityLog::COL_ADDED,
+            $column->name,
+            $column->wip_limit > 0 ? "WIP limit {$column->wip_limit}" : 'No WIP limit',
+        );
+
+        return $column;
     }
 
     /**
@@ -111,7 +122,13 @@ final class BoardColumnService
     public function update(int $id, array $data): BoardColumn
     {
         $column = $this->find($id);
-        $column->fill($data)->save();
+        $column->fill($data);
+        $changed = array_keys($column->getDirty());
+        $column->save();
+
+        if ($changed !== []) {
+            $this->activity->log(ActivityLog::UPDATED, $column->name, 'Column settings: '.implode(', ', array_map(fn (string $f): string => str_replace('_', ' ', $f), $changed)));
+        }
 
         return $column;
     }
@@ -219,6 +236,7 @@ final class BoardColumnService
 
             $cards = $column->cardCount();
             $moved = 0;
+            $targetName = null;
 
             if ($cards > 0) {
                 if ($targetColumnId === null) {
@@ -235,9 +253,16 @@ final class BoardColumnService
                 }
 
                 $moved = $this->moveCards($column, $target);
+                $targetName = $target->name;
             }
 
             $column->delete();
+
+            $this->activity->log(
+                ActivityLog::DELETED,
+                $column->name,
+                $targetName !== null ? "Column removed · {$moved} card(s) moved to {$targetName}" : 'Column removed',
+            );
 
             return $moved;
         });

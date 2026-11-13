@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Pmo;
 
+use App\Models\ActivityLog;
 use App\Models\Project;
 use App\Support\TaskTable;
 use Illuminate\Auth\AuthenticationException;
@@ -16,7 +17,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class ProjectService
 {
-    public function __construct(private readonly WorkloadCalculator $workload) {}
+    public function __construct(
+        private readonly WorkloadCalculator $workload,
+        private readonly ActivityLogger $activity,
+    ) {}
 
     /**
      * @return Collection<int, Project>
@@ -70,11 +74,15 @@ final class ProjectService
 
         $nextOrder = (int) Project::query()->where('user_id', $ownerId)->max('sort_order') + 1;
 
-        return Project::query()->create([
+        $project = Project::query()->create([
             ...$data,
             'user_id' => $ownerId,
             'sort_order' => $nextOrder,
         ]);
+
+        $this->activity->log(ActivityLog::CREATED, $project->name, 'Project added to portfolio');
+
+        return $project;
     }
 
     /**
@@ -97,6 +105,8 @@ final class ProjectService
                     ->where('project_id', $project->id)
                     ->update(['project_name_snapshot' => $project->name]);
             }
+
+            $this->activity->log(ActivityLog::UPDATED, $project->name, 'Project details updated');
 
             return $project;
         });
@@ -141,6 +151,8 @@ final class ProjectService
             }
 
             $project->delete();
+
+            $this->activity->log(ActivityLog::DELETED, $project->name, "Project removed · {$retained} task card(s) preserved");
 
             return $retained;
         });

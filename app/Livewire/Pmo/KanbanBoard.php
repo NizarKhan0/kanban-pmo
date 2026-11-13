@@ -28,6 +28,7 @@ use Livewire\Component;
  * @property-read Collection<int, BoardColumn> $columns
  * @property-read array<int, int> $cardCounts
  * @property-read TaskFilters $filters
+ * @property-read array{view: string, search: string, project: string, assignee: string, priority: string, due: string, sort: string} $filterState
  * @property-read array<int, Collection<int, Task>> $board
  * @property-read array{open: int, overdue: int, due_week: int, completed: int, over_wip: int} $kpis
  * @property-read Collection<int, Project> $projectOptions
@@ -153,6 +154,17 @@ class KanbanBoard extends Component
     }
 
     /**
+     * Serialisable filter state shared with the analytics + standup child components.
+     *
+     * @return array{view: string, search: string, project: string, assignee: string, priority: string, due: string, sort: string}
+     */
+    #[Computed]
+    public function filterState(): array
+    {
+        return $this->filters->toArray();
+    }
+
+    /**
      * @return array<int, Collection<int, Task>>
      */
     #[Computed]
@@ -251,11 +263,13 @@ class KanbanBoard extends Component
         }
 
         $this->closeModals();
+        $this->boardChanged();
     }
 
     public function moveColumn(int $id, int $position): void
     {
         app(BoardColumnService::class)->moveColumn($id, $position);
+        $this->boardChanged();
     }
 
     public function shiftColumn(int $id, int $direction): void
@@ -269,6 +283,7 @@ class KanbanBoard extends Component
 
         app(BoardColumnService::class)->moveColumn($id, $index + ($direction < 0 ? -1 : 1));
         unset($this->columns);
+        $this->boardChanged();
     }
 
     public function confirmDeleteColumn(int $id): void
@@ -313,6 +328,7 @@ class KanbanBoard extends Component
         Flux::toast(variant: 'success', heading: 'Column deleted', text: $text);
 
         $this->closeModals();
+        $this->boardChanged();
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -356,6 +372,7 @@ class KanbanBoard extends Component
         Flux::toast(variant: 'success', heading: $heading, text: $text);
 
         $this->closeModals();
+        $this->boardChanged();
     }
 
     /**
@@ -391,6 +408,7 @@ class KanbanBoard extends Component
         }
 
         unset($this->board, $this->cardCounts, $this->kpis);
+        $this->boardChanged();
     }
 
     public function confirmDeleteTask(int $id): void
@@ -409,6 +427,7 @@ class KanbanBoard extends Component
         if ($this->deleteTaskId !== null) {
             app(TaskService::class)->delete($this->deleteTaskId);
             Flux::toast(variant: 'success', heading: 'Task deleted', text: "\"{$this->deleteTaskTitle}\" was removed from the board.");
+            $this->boardChanged();
         }
 
         $this->closeModals();
@@ -437,6 +456,7 @@ class KanbanBoard extends Component
         }
 
         unset($this->board);
+        $this->boardChanged();
     }
 
     public function confirmDeleteSubtask(int $id): void
@@ -454,6 +474,7 @@ class KanbanBoard extends Component
             $subtask = app(TaskService::class)->deleteSubtask($this->deleteSubtaskId);
             $this->taskForm->forgetSubtask($subtask->id);
             Flux::toast(variant: 'success', heading: 'Subtask deleted', text: "\"{$subtask->title}\" was removed.");
+            $this->boardChanged();
         }
 
         $this->cancelSubtaskDelete();
@@ -486,6 +507,14 @@ class KanbanBoard extends Component
         $this->cancelSubtaskDelete();
         $this->columnForm->resetErrorBag();
         $this->taskForm->resetErrorBag();
+    }
+
+    /**
+     * Tell the analytics widgets to recompute after any board mutation.
+     */
+    private function boardChanged(): void
+    {
+        $this->dispatch('pmo-board-changed');
     }
 
     public function render(): View

@@ -42,6 +42,7 @@
             </p>
         </div>
         <div class="flex flex-wrap gap-2">
+            <button type="button" wire:click="$dispatch('open-standup')" class="{{ $btnGhost }}"><span aria-hidden="true">📋</span> Daily Standup Report</button>
             <button type="button" wire:click="createColumn" class="{{ $btnGhost }}"><span aria-hidden="true">🧱</span> Add Column</button>
             <button type="button" wire:click="createTask" class="{{ $btnPrimary }}"><span aria-hidden="true">＋</span> Add Task</button>
         </div>
@@ -333,6 +334,11 @@
             </button>
         </div>
     </section>
+
+    {{-- ═══════════════ Analytics Widgets (reactive to filters + board events) ═══════════════ --}}
+    <livewire:pmo.analytics-widgets :filters="$this->filterState" wire:key="pmo-analytics" />
+
+    <livewire:pmo.standup-modal :filters="$this->filterState" wire:key="pmo-standup" />
 
     {{-- ═══════════════ Delete Subtask (stacked; declared before the Task Modal so Escape closes it first) ═══════════════ --}}
     <x-pmo.modal show="showSubtaskDeleteModal" title="Delete Subtask" max-width="max-w-sm" close="cancelSubtaskDelete" :stacked="true">

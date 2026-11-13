@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Pmo;
 
+use App\Models\ActivityLog;
 use App\Models\BoardColumn;
 use App\Models\Project;
 use App\Models\Subtask;
@@ -25,6 +26,8 @@ final class TaskService
     /** @var list<string> Names auto-registered during the last create/update. */
     private array $registered = [];
 
+    public function __construct(private readonly ActivityLogger $activity) {}
+
     // ──────────────────────────────────────────────────────────────────
     // Read
     // ──────────────────────────────────────────────────────────────────
@@ -36,11 +39,7 @@ final class TaskService
      */
     public function board(TaskFilters $filters): array
     {
-        $query = Task::query()
-            ->where('tasks.user_id', $this->ownerId())
-            ->with(['column', 'project', 'teamMember', 'subtasks']);
-
-        $this->applyFilters($query, $filters);
+        $query = $this->filteredQuery($filters)->with(['column', 'project', 'teamMember', 'subtasks']);
         $this->applySort($query, $filters);
 
         $tasks = $query->get();
@@ -56,6 +55,19 @@ final class TaskService
         }
 
         return $grouped;
+    }
+
+    /**
+     * Owner-scoped query with the view + filter bar applied (no sorting, no eager loads).
+     *
+     * @return Builder<Task>
+     */
+    public function filteredQuery(TaskFilters $filters): Builder
+    {
+        $query = Task::query()->where('tasks.user_id', $this->ownerId());
+        $this->applyFilters($query, $filters);
+
+        return $query;
     }
 
     /**
@@ -132,6 +144,8 @@ final class TaskService
 
             $this->syncSubtasks($task, $subtasks);
 
+            $this->activity->log(ActivityLog::CREATED, $task->title, 'Added to '.$column->name.$this->picSuffix($task));
+
             return $task->load(['column', 'subtasks']);
         });
     }
@@ -157,9 +171,19 @@ final class TaskService
             }
 
             $this->syncCompletion($task, $from, $to);
+            $changed = array_values(array_diff(array_keys($task->getDirty()), ['board_column_id', 'sort_order', 'updated_at', 'completed_at']));
             $task->save();
 
             $this->syncSubtasks($task, $subtasks);
+
+            if ($from->id !== $to->id) {
+                $this->activity->log(ActivityLog::MOVED, $task->title, "{$from->name} → {$to->name}");
+            }
+            if ($changed !== [] || $from->id === $to->id) {
+                $this->activity->log(ActivityLog::UPDATED, $task->title, $changed === []
+                    ? 'Details saved'
+                    : 'Changed: '.implode(', ', array_map(fn (string $f): string => str_replace(['_snapshot', '_id', '_'], ['', '', ' '], $f), $changed)));
+            }
 
             return $task->load(['column', 'subtasks']);
         });
@@ -167,7 +191,10 @@ final class TaskService
 
     public function delete(int $id): void
     {
-        $this->find($id)->delete(); // subtasks cascade at DB level
+        $task = $this->find($id);
+        $task->delete(); // subtasks cascade at DB level
+
+        $this->activity->log(ActivityLog::DELETED, $task->title, 'Removed from '.$task->column->name);
     }
 
     /**
@@ -187,6 +214,12 @@ final class TaskService
         $subtask = $this->findSubtask($id);
         $subtask->update(['is_completed' => ! $subtask->is_completed]);
 
+        $this->activity->log(
+            ActivityLog::UPDATED,
+            $subtask->task->title,
+            ($subtask->is_completed ? 'Subtask completed: ' : 'Subtask reopened: ').$subtask->title,
+        );
+
         return $subtask;
     }
 
@@ -194,6 +227,8 @@ final class TaskService
     {
         $subtask = $this->findSubtask($id);
         $subtask->delete();
+
+        $this->activity->log(ActivityLog::UPDATED, $subtask->task->title, 'Subtask removed: '.$subtask->title);
 
         return $subtask;
     }
@@ -294,6 +329,10 @@ final class TaskService
             }
 
             $task->save();
+
+            if ($from->id !== $to->id) {
+                $this->activity->log(ActivityLog::MOVED, $task->title, "{$from->name} → {$to->name}");
+            }
 
             return $task->setRelation('column', $to);
         });
@@ -481,6 +520,7 @@ final class TaskService
                 'sort_order' => (int) Project::query()->where('user_id', $ownerId)->max('sort_order') + 1,
             ]);
             $this->registered[] = "Project: {$name}";
+            $this->activity->log(ActivityLog::CREATED, $name, 'Project auto-registered from a task card');
         }
 
         return $project;
@@ -510,6 +550,7 @@ final class TaskService
                 'sort_order' => (int) TeamMember::query()->where('user_id', $ownerId)->max('sort_order') + 1,
             ]);
             $this->registered[] = "PIC: {$name}";
+            $this->activity->log(ActivityLog::PIC_ADDED, $name, 'Auto-registered from a task card');
         }
 
         return $member;
@@ -538,6 +579,11 @@ final class TaskService
                 $task->subtasks()->create($attributes);
             }
         }
+    }
+
+    private function picSuffix(Task $task): string
+    {
+        return $task->pic_name_snapshot === null ? '' : ' · PIC: '.$task->pic_name_snapshot;
     }
 
     private function column(int $id): BoardColumn
