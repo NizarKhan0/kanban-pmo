@@ -66,6 +66,22 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
+     * @return HasMany<AutomationLog, $this>
+     */
+    public function automationLogs(): HasMany
+    {
+        return $this->hasMany(AutomationLog::class);
+    }
+
+    /**
+     * @return HasMany<SavedAiPrompt, $this>
+     */
+    public function savedAiPrompts(): HasMany
+    {
+        return $this->hasMany(SavedAiPrompt::class);
+    }
+
+    /**
      * @return HasMany<BoardColumn, $this>
      */
     public function boardColumns(): HasMany

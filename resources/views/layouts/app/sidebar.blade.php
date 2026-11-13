@@ -27,6 +27,9 @@
                     <flux:sidebar.item icon="check-circle" :href="route('pmo.board', ['view' => 'completed'])" :current="request()->routeIs('pmo.board') && request('view') === 'completed'" wire:navigate>
                         {{ __('Completed') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="sparkles" :href="route('pmo.hub')" :current="request()->routeIs('pmo.hub')" wire:navigate>
+                        {{ __('AI & Omnichannel Hub') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="users" :href="route('pmo.roster')" :current="request()->routeIs('pmo.roster')" wire:navigate>
                         {{ __('Projects & Roster') }}
                     </flux:sidebar.item>

@@ -206,6 +206,68 @@ final class TaskService
     }
 
     // ──────────────────────────────────────────────────────────────────
+    // AI-assisted changes
+    // ──────────────────────────────────────────────────────────────────
+
+    /**
+     * Append new subtasks after the existing ones (duplicates ignored).
+     *
+     * @param  list<string>  $titles
+     * @return int Number of subtasks added.
+     */
+    public function appendSubtasks(int $taskId, array $titles): int
+    {
+        $task = $this->find($taskId);
+        $existing = array_map(mb_strtolower(...), $task->subtasks->pluck('title')->all());
+        $order = (int) $task->subtasks->max('sort_order');
+        $added = 0;
+
+        DB::transaction(function () use ($task, $titles, &$existing, &$order, &$added): void {
+            foreach ($titles as $title) {
+                $title = mb_substr(trim($title), 0, 255);
+                if ($title === '' || in_array(mb_strtolower($title), $existing, true)) {
+                    continue;
+                }
+                $order += 10;
+                $task->subtasks()->create(['title' => $title, 'sort_order' => $order]);
+                $existing[] = mb_strtolower($title);
+                $added++;
+            }
+        });
+
+        if ($added > 0) {
+            $this->activity->log(ActivityLog::UPDATED, $task->title, "AI assistant added {$added} subtask(s)");
+        }
+
+        return $added;
+    }
+
+    /**
+     * Apply an AI-suggested title / priority / due date. A card in a Done
+     * column keeps priority "done" (Auto-Done Priority Sync).
+     */
+    public function applyImprovement(int $taskId, string $title, string $priority, ?string $dueDate): Task
+    {
+        $task = $this->find($taskId);
+
+        $task->title = mb_substr(trim($title), 0, 255) ?: $task->title;
+        $task->priority = $task->column->is_done_column
+            ? 'done'
+            : (array_key_exists($priority, Task::PRIORITIES) && $priority !== 'done' ? $priority : $task->priority);
+        $task->due_date = $dueDate === null || $dueDate === '' ? $task->due_date : Carbon::parse($dueDate);
+        $this->syncCompletion($task, $task->column, $task->column);
+
+        $changed = array_values(array_diff(array_keys($task->getDirty()), ['completed_at', 'updated_at']));
+        $task->save();
+
+        if ($changed !== []) {
+            $this->activity->log(ActivityLog::UPDATED, $task->title, 'AI improvement applied: '.implode(', ', array_map(fn (string $f): string => str_replace('_', ' ', $f), $changed)));
+        }
+
+        return $task;
+    }
+
+    // ──────────────────────────────────────────────────────────────────
     // Subtasks
     // ──────────────────────────────────────────────────────────────────
 

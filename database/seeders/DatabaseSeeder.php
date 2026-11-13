@@ -32,6 +32,7 @@ class DatabaseSeeder extends Seeder
             BoardColumnSeeder::class,
             TaskSeeder::class,
             ActivityLogSeeder::class,
+            AiOmnichannelSeeder::class,
         ]);
     }
 }
