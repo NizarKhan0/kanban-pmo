@@ -1,6 +1,6 @@
 # Modul 03: Tasks, Subtasks & Advanced Filtering
 
-Rujuk `AGENT.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 03: Tasks, Subtasks & Advanced Filtering** dengan mematuhi 100% English Web UI, Strict Multi-Tenancy, dan Mandatori Full CRUD:
+Rujuk `CLAUDE.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 03: Tasks, Subtasks & Advanced Filtering** dengan mematuhi 100% English Web UI, Strict Multi-Tenancy, dan Mandatori Full CRUD:
 
 ### 1. Data Layer (Migrations & Schema — Lengkap Medan UX)
 
@@ -43,3 +43,13 @@ Rujuk `AGENT.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 03: Tasks, Subtasks & 
 ### 4. Verification Layer (Database Seeder)
 
 - `TaskSeeder.php`: Jana 14 kad tugasan realistik merentasi 5 lajur (seperti _Prepare SRS document for application module_, _FPX payment integration_, _Monthly report module UAT_) lengkap dengan subtasks dan tags untuk `user_id = 1`.
+
+### 5. Nota Pelaksanaan (dikemas kini selepas pembinaan)
+
+- `subtasks` tidak mempunyai `user_id` (mengikut skema di atas) — semua query ditapis melalui `task.user_id` (lihat `CLAUDE.md` §5).
+- Task Modal: **Project** dan **Assignee (PIC)** ialah dropdown daripada Modul 01 (tiada teks bebas); ID disahkan milik pengguna semasa. Kad yang PIC/projeknya telah dipadam memaparkan nama lama ("Former PIC") dan snapshot itu kekal sehingga pengguna memilih yang baharu.
+- Tiada "auto-daftar": projek dan PIC tidak pernah dicipta secara automatik daripada teks. Ia mesti didaftarkan di Projects & Roster (Modul 01).
+- Drag-and-drop kad hanya aktif dalam sort "Manual Drag" (sort lain akan menimpa susunan manual).
+- View "Overdue / Due" = tugasan terbuka yang lewat atau tamat tempoh dalam 7 hari.
+- Lajur Done sentiasa memaksa `priority = 'done'`; `due_date` sentiasa disimpan sebagai `Y-m-d`.
+- Delete Subtask: baris baharu yang belum disimpan dibuang terus; subtask tersimpan melalui Confirmation Modal (bertindih di atas Task Modal).

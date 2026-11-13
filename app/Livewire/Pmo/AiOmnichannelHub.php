@@ -7,8 +7,10 @@ namespace App\Livewire\Pmo;
 use App\Livewire\Forms\Pmo\SavedAiPromptForm;
 use App\Models\AutomationLog;
 use App\Models\BoardColumn;
+use App\Models\Project;
 use App\Models\SavedAiPrompt;
 use App\Models\Task;
+use App\Models\TeamMember;
 use App\Services\Pmo\AiPmoService;
 use App\Services\Pmo\AutomationLogger;
 use App\Services\Pmo\BoardColumnService;
@@ -23,6 +25,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
@@ -38,6 +41,8 @@ use Livewire\WithPagination;
  * @property-read Collection<int, SavedAiPrompt> $prompts
  * @property-read Collection<int, Task> $taskOptions
  * @property-read Collection<int, BoardColumn> $columnOptions
+ * @property-read Collection<int, Project> $projectOptions
+ * @property-read Collection<int, TeamMember> $memberOptions
  */
 #[Title('AI & Omnichannel Hub')]
 class AiOmnichannelHub extends Component
@@ -71,6 +76,12 @@ class AiOmnichannelHub extends Component
     public array $captureSelected = [];
 
     public ?int $captureColumnId = null;
+
+    /** @var array<int, int|string|null> Chosen project per captured row (roster IDs only). */
+    public array $captureProjects = [];
+
+    /** @var array<int, int|string|null> Chosen PIC per captured row (roster IDs only). */
+    public array $captureMembers = [];
 
     // ── Dispatch ─────────────────────────────────────────────────────
     public string $telegramChatId = '';
@@ -180,6 +191,33 @@ class AiOmnichannelHub extends Component
         return app(BoardColumnService::class)->list();
     }
 
+    /**
+     * @return Collection<int, Project>
+     */
+    #[Computed]
+    public function projectOptions(): Collection
+    {
+        return Project::query()
+            ->where('user_id', Auth::id())
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'status']);
+    }
+
+    /**
+     * @return Collection<int, TeamMember>
+     */
+    #[Computed]
+    public function memberOptions(): Collection
+    {
+        return TeamMember::query()
+            ->where('user_id', Auth::id())
+            ->orderByDesc('is_me')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'is_me', 'is_active']);
+    }
+
     // ──────────────────────────────────────────────────────────────────
     // AI assistant
     // ──────────────────────────────────────────────────────────────────
@@ -277,9 +315,13 @@ class AiOmnichannelHub extends Component
             return;
         }
 
+        $this->validate([
+            'captureProjects.*' => ['nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', Auth::id())],
+            'captureMembers.*' => ['nullable', 'integer', Rule::exists('team_members', 'id')->where('user_id', Auth::id())],
+        ], attributes: ['captureProjects.*' => 'project', 'captureMembers.*' => 'PIC']);
+
         $service = app(TaskService::class);
         $created = 0;
-        $registered = [];
         foreach ($selected as $index) {
             $item = $items[$index] ?? null;
             if (! is_array($item) || trim((string) ($item['title'] ?? '')) === '') {
@@ -289,8 +331,8 @@ class AiOmnichannelHub extends Component
             $service->create([
                 'board_column_id' => $column->id,
                 'title' => Str::limit((string) $item['title'], 250, ''),
-                'project_name' => ($item['project'] ?? '') !== '' ? (string) $item['project'] : null,
-                'pic_name' => ($item['pic'] ?? '') !== '' ? (string) $item['pic'] : null,
+                'project_id' => $this->chosenId($this->captureProjects[$index] ?? null),
+                'team_member_id' => $this->chosenId($this->captureMembers[$index] ?? null),
                 'priority' => in_array($item['priority'] ?? '', ['high', 'medium', 'low'], true) ? (string) $item['priority'] : 'medium',
                 'icon' => '🧲',
                 'color' => 'violet',
@@ -298,14 +340,13 @@ class AiOmnichannelHub extends Component
                 'tags' => ['ai-capture'],
                 'notes' => ($item['notes'] ?? '') !== '' ? (string) $item['notes'] : null,
             ]);
-            $registered = [...$registered, ...$service->registered()];
             $created++;
         }
 
         Flux::toast(
             variant: 'success',
             heading: 'Tasks added to board',
-            text: "{$created} ".Str::plural('card', $created)." added to “{$column->name}”.".($registered === [] ? '' : ' Newly registered — '.implode(', ', array_unique($registered)).'.'),
+            text: "{$created} ".Str::plural('card', $created)." added to “{$column->name}”.",
         );
         $this->resetAiOutput();
     }
@@ -570,18 +611,61 @@ class AiOmnichannelHub extends Component
         $this->showManual = false;
         $this->manualAnswer = '';
         $this->captureSelected = [];
+        $this->captureProjects = [];
+        $this->captureMembers = [];
         $this->resetErrorBag(['manualAnswer', 'captureColumnId']);
     }
 
     private function primeCaptureSelection(): void
     {
-        $count = count((array) ($this->aiResult['data']['tasks'] ?? []));
-        $this->captureSelected = $count === 0 ? [] : array_fill(0, $count, true);
+        $items = array_values((array) ($this->aiResult['data']['tasks'] ?? []));
+        $this->captureSelected = $items === [] ? [] : array_fill(0, count($items), true);
+
+        // Pre-select roster matches; names that are not on the roster stay unassigned.
+        $this->captureProjects = [];
+        $this->captureMembers = [];
+        foreach ($items as $i => $item) {
+            $this->captureProjects[$i] = $this->matchRoster($this->projectOptions, (string) ($item['project'] ?? ''), false);
+            $this->captureMembers[$i] = $this->matchRoster($this->memberOptions, (string) ($item['pic'] ?? ''), true);
+        }
 
         if ($this->captureColumnId === null) {
             $this->captureColumnId = $this->columnOptions->first(fn (BoardColumn $c): bool => ! $c->is_done_column)->id
                 ?? $this->columnOptions->first()->id ?? null;
         }
+    }
+
+    /**
+     * Roster record whose name matches $name (case-insensitive); PICs may also
+     * match on first name ("Haziq" → "Haziq M.") when that is unambiguous.
+     *
+     * @param  Collection<int, Project>|Collection<int, TeamMember>  $options
+     */
+    private function matchRoster(Collection $options, string $name, bool $allowFirstName): ?int
+    {
+        $needle = mb_strtolower(trim($name));
+        if ($needle === '') {
+            return null;
+        }
+
+        $exact = $options->first(fn ($o): bool => mb_strtolower($o->name) === $needle);
+        if ($exact !== null) {
+            return (int) $exact->id;
+        }
+
+        if ($allowFirstName) {
+            $first = Str::before($needle, ' ');
+            $hits = $options->filter(fn ($o): bool => mb_strtolower(Str::before($o->name, ' ')) === $first);
+
+            return $hits->count() === 1 ? (int) $hits->first()->id : null;
+        }
+
+        return null;
+    }
+
+    private function chosenId(int|string|null $value): ?int
+    {
+        return $value === null || $value === '' ? null : (int) $value;
     }
 
     /**

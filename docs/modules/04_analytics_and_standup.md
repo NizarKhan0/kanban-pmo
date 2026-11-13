@@ -1,6 +1,6 @@
 # Modul 04: Analytics Widgets, Activity Logs & Standup Report
 
-Rujuk `AGENT.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 04: Analytics Widgets, Activity Logs & Standup Report** dengan mematuhi 100% English Web UI, Strict Multi-Tenancy, dan Mandatori Full CRUD:
+Rujuk `CLAUDE.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 04: Analytics Widgets, Activity Logs & Standup Report** dengan mematuhi 100% English Web UI, Strict Multi-Tenancy, dan Mandatori Full CRUD:
 
 ### 1. Data Layer (Migrations & Schema)
 
@@ -32,3 +32,10 @@ Rujuk `AGENT.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 04: Analytics Widgets,
 ### 4. Verification Layer (Database Seeder)
 
 - `ActivityLogSeeder.php`: Jana 5 rekod aktiviti permulaan yang realistik untuk `user_id = 1`.
+
+### 5. Nota Pelaksanaan (dikemas kini selepas pembinaan)
+
+- `action_type` tambahan: `note` — nota standup pengguna (CRUD penuh). Entri automatik ialah log audit: tidak boleh disunting, hanya "Clear Activity Logs".
+- Widget mengikut view + penapis papan semasa (prop `#[Reactive]`) dan dikira semula melalui peristiwa `pmo-board-changed`. "Real-time" bermaksud dalam sesi pengguna yang sama (tiada broadcasting antara pengguna).
+- Susunan semula kad dalam lajur yang sama tidak direkod (hanya pemindahan merentas lajur).
+- Warna carta disahkan untuk mod gelap/terang; setiap bar berlabel teks + nombor.

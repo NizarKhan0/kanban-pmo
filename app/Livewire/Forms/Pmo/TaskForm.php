@@ -19,9 +19,15 @@ class TaskForm extends Form
 
     public string $title = '';
 
-    public string $project_name = '';
+    public int|string|null $project_id = null;
 
-    public string $pic_name = '';
+    public int|string|null $team_member_id = null;
+
+    /** Preserved name of a removed project (display only — PIC History SOP). */
+    public string $former_project = '';
+
+    /** Preserved name of a removed PIC (display only — PIC History SOP). */
+    public string $former_pic = '';
 
     public string $priority = 'medium';
 
@@ -51,8 +57,14 @@ class TaskForm extends Form
                 Rule::exists('board_columns', 'id')->where('user_id', Auth::id()),
             ],
             'title' => ['required', 'string', 'max:255'],
-            'project_name' => ['nullable', 'string', 'max:255'],
-            'pic_name' => ['nullable', 'string', 'max:255'],
+            'project_id' => [
+                'nullable', 'integer',
+                Rule::exists('projects', 'id')->where('user_id', Auth::id()),
+            ],
+            'team_member_id' => [
+                'nullable', 'integer',
+                Rule::exists('team_members', 'id')->where('user_id', Auth::id()),
+            ],
             'priority' => ['required', Rule::in(array_keys(Task::PRIORITIES))],
             'icon' => ['required', 'string', 'max:10'],
             'color' => ['required', Rule::in(NeoPalette::keys())],
@@ -74,8 +86,8 @@ class TaskForm extends Form
         return [
             'board_column_id' => 'column',
             'title' => 'task title',
-            'project_name' => 'project',
-            'pic_name' => 'assignee',
+            'project_id' => 'project',
+            'team_member_id' => 'assignee',
             'due_date' => 'due date',
             'notes' => 'blocker / notes',
             'subtasks.*.title' => 'subtask title',
@@ -95,8 +107,10 @@ class TaskForm extends Form
         $this->id = $task->id;
         $this->board_column_id = $task->board_column_id;
         $this->title = $task->title;
-        $this->project_name = (string) $task->projectLabel();
-        $this->pic_name = (string) $task->picLabel();
+        $this->project_id = $task->project_id;
+        $this->team_member_id = $task->team_member_id;
+        $this->former_project = $task->project_id === null ? (string) $task->project_name_snapshot : '';
+        $this->former_pic = $task->team_member_id === null ? (string) $task->pic_name_snapshot : '';
         $this->priority = $task->priority;
         $this->icon = $task->icon;
         $this->color = $task->color;
@@ -148,13 +162,13 @@ class TaskForm extends Form
     }
 
     /**
-     * @return array{0: array{board_column_id: int, title: string, project_name: ?string, pic_name: ?string, priority: string, icon: string, color: string, due_date: ?string, tags: list<string>, notes: ?string}, 1: list<array{id: ?int, title: string, is_completed: bool}>}
+     * @return array{0: array{board_column_id: int, title: string, project_id: ?int, team_member_id: ?int, priority: string, icon: string, color: string, due_date: ?string, tags: list<string>, notes: ?string}, 1: list<array{id: ?int, title: string, is_completed: bool}>}
      */
     public function payload(): array
     {
         $this->title = trim($this->title);
-        $this->project_name = trim($this->project_name);
-        $this->pic_name = trim($this->pic_name);
+        $this->project_id = $this->project_id === '' ? null : $this->project_id;
+        $this->team_member_id = $this->team_member_id === '' ? null : $this->team_member_id;
         $this->notes = trim($this->notes);
 
         // Unsaved blank rows are simply dropped; saved rows must keep a title.
@@ -171,8 +185,8 @@ class TaskForm extends Form
             [
                 'board_column_id' => (int) $this->board_column_id,
                 'title' => $this->title,
-                'project_name' => $nullable($this->project_name),
-                'pic_name' => $nullable($this->pic_name),
+                'project_id' => $this->project_id === null ? null : (int) $this->project_id,
+                'team_member_id' => $this->team_member_id === null ? null : (int) $this->team_member_id,
                 'priority' => $this->priority,
                 'icon' => trim($this->icon),
                 'color' => $this->color,

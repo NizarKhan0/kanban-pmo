@@ -1,6 +1,6 @@
 # Modul 06: Data Portability (JSON/CSV Backup) & Workspace Settings
 
-Rujuk `AGENT.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 06: Data Portability & Workspace Settings** dengan mematuhi 100% English Web UI, Strict Multi-Tenancy, dan Mandatori Full CRUD:
+Rujuk `CLAUDE.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 06: Data Portability & Workspace Settings** dengan mematuhi 100% English Web UI, Strict Multi-Tenancy, dan Mandatori Full CRUD:
 
 ### 1. Data Layer (Migrations & Schema)
 
@@ -28,3 +28,11 @@ Rujuk `AGENT.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 06: Data Portability &
 ### 4. Verification Layer (Database Seeder)
 
 - `WorkspaceBackupSeeder.php`: Jana 1 rekod snapshot permulaan dalam `workspace_backups` untuk `user_id = 1` dan daftar semua Seeder Modul 01 hingga 06 ke dalam `DatabaseSeeder.php`.
+
+### 5. Nota Pelaksanaan (dikemas kini selepas pembinaan)
+
+- Lokasi: tab **Settings › Data & Backup** (`/settings/data`, `data.edit`) — bukan modal global. Kelas `SettingsPortabilityModal` dikekalkan namanya. Tema Dark/Light berada di Settings › Appearance.
+- Fail rujukan format asal: `docs/reference/Kanban_PMO_Neo.html` (JSON: `v, me, people[], columns[{cards[]}], activity[]`; tiada entiti projek; lajur Done dikesan melalui nama `done|siap|selesai|complete`; subtask hanya kiraan `subD/subT`).
+- Eksport ialah superset serasi (HTML asal boleh mengimportnya). Subtask daripada HTML asal dicipta sebagai "Checklist item 1..N".
+- Import / Restore / Reset menggantikan seluruh papan dan SENTIASA mencipta snapshot keselamatan dahulu. Reset memerlukan 2 langkah (tanda kotak + taip `RESET`).
+- CSV: UTF-8 BOM; sel bermula `= + - @` diberi awalan `'` (perlindungan formula injection).

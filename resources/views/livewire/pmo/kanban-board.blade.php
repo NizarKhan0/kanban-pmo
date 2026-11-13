@@ -387,25 +387,38 @@
 
                 <div>
                     <label for="task-project" class="{{ $label }}">Project</label>
-                    <input id="task-project" type="text" list="task-project-options" wire:model="taskForm.project_name" class="{{ $field }}" placeholder="Select or type a new project" maxlength="255" autocomplete="off">
-                    <datalist id="task-project-options">
+                    <select id="task-project" wire:model="taskForm.project_id" class="{{ $field }}">
+                        <option value="">No project</option>
                         @foreach ($this->projectOptions as $option)
-                            <option value="{{ $option->name }}"></option>
+                            <option value="{{ $option->id }}">{{ $option->name }}{{ $option->status !== 'active' ? ' — '.(\App\Models\Project::STATUSES[$option->status] ?? $option->status) : '' }}</option>
                         @endforeach
-                    </datalist>
-                    @error('taskForm.project_name') <p class="{{ $error }}">{{ $message }}</p> @enderror
+                    </select>
+                    @if ($taskForm->former_project !== '')
+                        <p class="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">Previously: <strong>{{ $taskForm->former_project }}</strong> (project removed — name kept on this card until you choose another).</p>
+                    @endif
+                    @error('taskForm.project_id') <p class="{{ $error }}">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label for="task-pic" class="{{ $label }}">Assignee (PIC)</label>
-                    <input id="task-pic" type="text" list="task-pic-options" wire:model="taskForm.pic_name" class="{{ $field }}" placeholder="Select or type a new PIC" maxlength="255" autocomplete="off">
-                    <datalist id="task-pic-options">
+                    <select id="task-pic" wire:model="taskForm.team_member_id" class="{{ $field }}">
+                        <option value="">Unassigned</option>
                         @foreach ($this->memberOptions as $option)
-                            <option value="{{ $option->name }}"></option>
+                            <option value="{{ $option->id }}" @disabled(! $option->is_active && (int) $taskForm->team_member_id !== $option->id)>
+                                {{ $option->name }}{{ $option->is_me ? ' (Me)' : '' }}{{ $option->is_active ? '' : ' — Inactive' }}
+                            </option>
                         @endforeach
-                    </datalist>
-                    @error('taskForm.pic_name') <p class="{{ $error }}">{{ $message }}</p> @enderror
+                    </select>
+                    @if ($taskForm->former_pic !== '')
+                        <p class="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">Former PIC: <strong>{{ $taskForm->former_pic }}</strong> (removed from the roster — name kept on this card until you assign someone).</p>
+                    @endif
+                    @error('taskForm.team_member_id') <p class="{{ $error }}">{{ $message }}</p> @enderror
                 </div>
-                <p class="-mt-2 text-xs text-zinc-500 sm:col-span-2 dark:text-zinc-400">New project or PIC names are registered automatically when you save.</p>
+                @if ($this->projectOptions->isEmpty() || $this->memberOptions->isEmpty())
+                    <p class="-mt-2 text-xs text-zinc-500 sm:col-span-2 dark:text-zinc-400">
+                        {{ $this->projectOptions->isEmpty() ? 'No projects yet.' : '' }} {{ $this->memberOptions->isEmpty() ? 'No team members yet.' : '' }}
+                        Add them on <a href="{{ route('pmo.roster') }}" wire:navigate class="font-semibold text-[#8b5cf6] underline">Projects &amp; Roster</a>.
+                    </p>
+                @endif
 
                 <div>
                     <label for="task-due" class="{{ $label }}">Due Date</label>

@@ -1,6 +1,6 @@
 # Modul 02: Kanban Board & Columns Engine
 
-Rujuk `AGENT.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 02: Kanban Board & Columns Engine** dengan mematuhi 100% English Web UI, Strict Multi-Tenancy, dan Mandatori Full CRUD:
+Rujuk `CLAUDE.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 02: Kanban Board & Columns Engine** dengan mematuhi 100% English Web UI, Strict Multi-Tenancy, dan Mandatori Full CRUD:
 
 ### 1. Data Layer (Migrations & Schema — Lengkap Medan UX)
 
@@ -33,3 +33,9 @@ Rujuk `AGENT.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 02: Kanban Board & Col
     3. `In Progress` (`#38bdf8`, WIP: 7)
     4. `Review` (`#c084fc`, WIP: 0)
     5. `Done` (`#34d399`, WIP: 0, `is_done_column = true`)
+
+### 5. Nota Pelaksanaan (dikemas kini selepas pembinaan)
+
+- Halaman: `/pmo/board` (`pmo.board`). Drag-and-drop lajur menggunakan `x-sort` (Alpine Sort dalam Livewire) melalui pemegang; menu `⋮` turut menyediakan Move Left / Move Right.
+- Memadam lajur yang berisi kad memerlukan pilihan lajur destinasi — kad dipindahkan (dengan Auto-Done Sync), tidak pernah dipadam.
+- Lajur terakhir tidak boleh dipadam; pengguna tanpa lajur menerima 5 lajur standard secara automatik semasa lawatan pertama.

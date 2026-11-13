@@ -1,6 +1,6 @@
 # Modul 05: AI PMO Assistant & Omnichannel Automation Hub (Telegram, Gmail, WhatsApp)
 
-Rujuk `AGENT.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 05: AI PMO Assistant & Omnichannel Automation Hub** dengan mematuhi 100% English Web UI, Strict Multi-Tenancy, Environment-Driven Config, dan Smart Simulation:
+Rujuk `CLAUDE.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 05: AI PMO Assistant & Omnichannel Automation Hub** dengan mematuhi 100% English Web UI, Strict Multi-Tenancy, Environment-Driven Config, dan Smart Simulation:
 
 ### 1. Data Layer (Migrations & Schema — Lengkap Medan UX)
 
@@ -17,7 +17,7 @@ Rujuk `AGENT.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 05: AI PMO Assistant &
 ### 2. Logic Layer (Services, Artisan Commands & `config/pmo.php`)
 
 - **Fail Konfigurasi `config/pmo.php` (Dibaca daripada `.env`):**
-    - AI: `PMO_AI_PROVIDER` ('claude'), `PMO_AI_MODEL` ('claude-sonnet-4-20250514'), `PMO_AI_API_KEY`, `PMO_AI_CUSTOM_ENDPOINT`.
+    - AI: `PMO_AI_PROVIDER` ('claude'), `PMO_AI_MODEL` (model semasa yang disokong — lalai `claude-sonnet-5-5`; jangan kunci model yang mungkin ditamatkan), `PMO_AI_API_KEY`, `PMO_AI_CUSTOM_ENDPOINT`.
     - Telegram: `PMO_TELEGRAM_ENABLED` (false), `PMO_TELEGRAM_BOT_TOKEN`, `PMO_TELEGRAM_CHAT_ID`.
     - Gmail / Email: `PMO_EMAIL_ENABLED` (false), `PMO_EMAIL_RECIPIENT` (emel ketua/PMO), menggunakan konfigurasi `MAIL_*` Laravel.
     - WhatsApp: `PMO_WHATSAPP_ENABLED` (false), `PMO_WHATSAPP_GATEWAY_URL`, `PMO_WHATSAPP_API_TOKEN`, `PMO_WHATSAPP_DEFAULT_PHONE`.
@@ -50,3 +50,13 @@ Rujuk `AGENT.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 05: AI PMO Assistant &
 ### 4. Verification Layer (Database Seeder)
 
 - `AiOmnichannelSeeder.php`: Jana 3 templat `saved_ai_prompts` dan 4 rekod contoh `automation_logs` (1 rekod bagi setiap saluran: `ai_claude`, `telegram`, `gmail`, dan `whatsapp` dengan status `'simulated'`) untuk `user_id = 1`.
+
+### 5. Nota Pelaksanaan (dikemas kini selepas pembinaan)
+
+- Halaman: `/pmo/hub` (`pmo.hub`). Panduan setup `.env`: lihat `.env.example` (blok Module 05).
+- Model lalai: `claude-sonnet-5-5` melalui `PMO_AI_MODEL`. (`claude-sonnet-4-20250514` dalam draf asal telah ditamatkan pada 15 Jun 2026.) Jangan kunci nama model dalam spesifikasi.
+- Claude dipanggil melalui SDK rasmi `anthropic-ai/sdk` dengan structured output (JSON schema) untuk capture / subtasks / improve dan server-side fallback (`fallbacks: 'default'`). OpenAI / Custom melalui Laravel `Http`.
+- Panggilan sebenar yang gagal → `failed` + jawapan simulasi sebagai sandaran. Token rahsia tidak pernah ditulis ke log.
+- WhatsApp gateway menerima `POST {phone, message}` + `Authorization: Bearer`; tanpa gateway, pautan `wa.me` disediakan.
+- Command: `--user`, `--channel`, `--pmo-only`; setiap tenant diproses berasingan (`RunsPerTenant`).
+- Capture Tasks: senarai semakan memaparkan dropdown **Project** dan **PIC** bagi setiap tugasan. Nama yang sepadan dengan roster dipilih secara automatik (padanan tepat, atau nama pertama yang unik untuk PIC); nama yang tiada dalam roster dibiarkan kosong dengan nota "From notes: … — not on the roster". Tiada rekod baharu dicipta secara automatik.

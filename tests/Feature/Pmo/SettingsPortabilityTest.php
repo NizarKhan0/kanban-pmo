@@ -157,8 +157,10 @@ class SettingsPortabilityTest extends TestCase
     public function test_csv_export_has_bom_headers_and_neutralises_formulas(): void
     {
         $column = BoardColumn::query()->where('user_id', $this->user->id)->where('name', 'To Do')->sole();
+        $project = Project::query()->create(['user_id' => $this->user->id, 'name' => 'ePJS']);
+        $member = TeamMember::query()->create(['user_id' => $this->user->id, 'name' => 'Farah L.']);
         app(TaskService::class)->create([
-            'board_column_id' => $column->id, 'title' => '=HYPERLINK("http://evil")', 'project_name' => 'ePJS', 'pic_name' => 'Farah L.',
+            'board_column_id' => $column->id, 'title' => '=HYPERLINK("http://evil")', 'project_id' => $project->id, 'team_member_id' => $member->id,
             'priority' => 'high', 'icon' => '📌', 'color' => 'violet', 'due_date' => '2026-12-01', 'tags' => ['uat', 'docs'], 'notes' => "Line 1\nLine \"2\"",
         ], [['id' => null, 'title' => 'a', 'is_completed' => true], ['id' => null, 'title' => 'b', 'is_completed' => false]]);
 

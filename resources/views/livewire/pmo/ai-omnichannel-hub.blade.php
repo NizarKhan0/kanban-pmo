@@ -195,8 +195,30 @@
                                                 <tr wire:key="cap-{{ $i }}" class="align-top">
                                                     <td class="py-2 pr-2"><input type="checkbox" wire:model="captureSelected.{{ $i }}" class="size-4 rounded accent-[#ff2e9a]" aria-label="Include {{ $item['title'] }}"></td>
                                                     <td class="py-2 pr-3 font-medium text-zinc-900 dark:text-white">{{ $item['title'] }}</td>
-                                                    <td class="py-2 pr-3 text-zinc-600 dark:text-zinc-300">{{ $item['project'] ?: '—' }}</td>
-                                                    <td class="py-2 pr-3 text-zinc-600 dark:text-zinc-300">{{ $item['pic'] ?: '—' }}</td>
+                                                    <td class="min-w-40 py-2 pr-3">
+                                                        <select wire:model="captureProjects.{{ $i }}" class="{{ $field }} !py-1.5 !text-xs" aria-label="Project for {{ $item['title'] }}">
+                                                            <option value="">No project</option>
+                                                            @foreach ($this->projectOptions as $option)
+                                                                <option value="{{ $option->id }}">{{ $option->name }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                        @if ($item['project'] !== '' && ($captureProjects[$i] ?? null) === null)
+                                                            <p class="mt-1 text-[11px] text-amber-600 dark:text-amber-400">From notes: “{{ $item['project'] }}” — not on the roster</p>
+                                                        @endif
+                                                        @error('captureProjects.'.$i) <p class="{{ $error }}">{{ $message }}</p> @enderror
+                                                    </td>
+                                                    <td class="min-w-40 py-2 pr-3">
+                                                        <select wire:model="captureMembers.{{ $i }}" class="{{ $field }} !py-1.5 !text-xs" aria-label="PIC for {{ $item['title'] }}">
+                                                            <option value="">Unassigned</option>
+                                                            @foreach ($this->memberOptions as $option)
+                                                                <option value="{{ $option->id }}" @disabled(! $option->is_active)>{{ $option->name }}{{ $option->is_me ? ' (Me)' : '' }}{{ $option->is_active ? '' : ' — Inactive' }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                        @if ($item['pic'] !== '' && ($captureMembers[$i] ?? null) === null)
+                                                            <p class="mt-1 text-[11px] text-amber-600 dark:text-amber-400">From notes: “{{ $item['pic'] }}” — not on the roster</p>
+                                                        @endif
+                                                        @error('captureMembers.'.$i) <p class="{{ $error }}">{{ $message }}</p> @enderror
+                                                    </td>
                                                     <td class="py-2 pr-3"><span class="{{ $badge }} {{ Task::PRIORITY_BADGES[$item['priority']] ?? '' }}">{{ Task::PRIORITIES[$item['priority']] ?? $item['priority'] }}</span></td>
                                                     <td class="py-2 text-zinc-600 dark:text-zinc-300">{{ $item['due_date'] ?: '—' }}</td>
                                                 </tr>
@@ -216,7 +238,7 @@
                                     </div>
                                     <button type="button" wire:click="applyCapture" wire:loading.attr="disabled" class="{{ $btnPrimary }}">＋ Add Selected to Board</button>
                                 </div>
-                                <p class="text-[11px] text-zinc-500 dark:text-zinc-400">New project or PIC names are registered automatically.</p>
+                                <p class="text-[11px] text-zinc-500 dark:text-zinc-400">Matching projects and PICs are pre-selected. Names that are not on the roster stay unassigned — pick one above, or add them on <a href="{{ route('pmo.roster') }}" wire:navigate class="font-semibold text-[#8b5cf6] underline">Projects &amp; Roster</a> first.</p>
                             @endif
                             @break
 

@@ -23,9 +23,6 @@ use Illuminate\Support\Facades\DB;
  */
 final class TaskService
 {
-    /** @var list<string> Names auto-registered during the last create/update. */
-    private array $registered = [];
-
     public function __construct(private readonly ActivityLogger $activity) {}
 
     // ──────────────────────────────────────────────────────────────────
@@ -122,13 +119,12 @@ final class TaskService
     // ──────────────────────────────────────────────────────────────────
 
     /**
-     * @param  array{board_column_id: int, title: string, project_name: ?string, pic_name: ?string, priority: string, icon: string, color: string, due_date: ?string, tags: list<string>, notes: ?string}  $data
+     * @param  array{board_column_id: int, title: string, project_id: ?int, team_member_id: ?int, priority: string, icon: string, color: string, due_date: ?string, tags: list<string>, notes: ?string}  $data
      * @param  list<array{id: ?int, title: string, is_completed: bool}>  $subtasks
      */
     public function create(array $data, array $subtasks = []): Task
     {
         $ownerId = $this->ownerId();
-        $this->registered = [];
 
         return DB::transaction(function () use ($ownerId, $data, $subtasks): Task {
             $column = $this->column($data['board_column_id']);
@@ -151,19 +147,29 @@ final class TaskService
     }
 
     /**
-     * @param  array{board_column_id: int, title: string, project_name: ?string, pic_name: ?string, priority: string, icon: string, color: string, due_date: ?string, tags: list<string>, notes: ?string}  $data
+     * @param  array{board_column_id: int, title: string, project_id: ?int, team_member_id: ?int, priority: string, icon: string, color: string, due_date: ?string, tags: list<string>, notes: ?string}  $data
      * @param  list<array{id: ?int, title: string, is_completed: bool}>  $subtasks
      */
     public function update(int $id, array $data, array $subtasks = []): Task
     {
         $task = $this->find($id);
-        $this->registered = [];
 
         return DB::transaction(function () use ($task, $data, $subtasks): Task {
             $from = $task->column;
             $to = $this->column($data['board_column_id']);
 
+            $snapshots = ['project' => $task->project_name_snapshot, 'pic' => $task->pic_name_snapshot];
+            $wasUnlinked = ['project' => $task->project_id === null, 'pic' => $task->team_member_id === null];
+
             $task->fill($this->attributes($data));
+
+            // PIC History SOP: a removed project / PIC keeps its preserved name until a new one is chosen.
+            if ($wasUnlinked['project'] && $task->project_id === null) {
+                $task->project_name_snapshot = $snapshots['project'];
+            }
+            if ($wasUnlinked['pic'] && $task->team_member_id === null) {
+                $task->pic_name_snapshot = $snapshots['pic'];
+            }
 
             if ($from->id !== $to->id) {
                 $task->board_column_id = $to->id;
@@ -195,14 +201,6 @@ final class TaskService
         $task->delete(); // subtasks cascade at DB level
 
         $this->activity->log(ActivityLog::DELETED, $task->title, 'Removed from '.$task->column->name);
-    }
-
-    /**
-     * @return list<string> "Project: X" / "PIC: Y" entries registered by the last create/update.
-     */
-    public function registered(): array
-    {
-        return $this->registered;
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -535,13 +533,14 @@ final class TaskService
     }
 
     /**
-     * @param  array{title: string, project_name: ?string, pic_name: ?string, priority: string, icon: string, color: string, due_date: ?string, tags: list<string>, notes: ?string}  $data
+     * @param  array{title: string, project_id: ?int, team_member_id: ?int, priority: string, icon: string, color: string, due_date: ?string, tags: list<string>, notes: ?string}  $data
      * @return array<string, mixed>
      */
     private function attributes(array $data): array
     {
-        $project = $this->resolveProject($data['project_name']);
-        $member = $this->resolveMember($data['pic_name']);
+        // Projects and PICs are chosen from the roster (Module 01) — never created implicitly.
+        $project = $this->ownedProject($data['project_id']);
+        $member = $this->ownedMember($data['team_member_id']);
 
         return [
             'title' => $data['title'],
@@ -558,64 +557,14 @@ final class TaskService
         ];
     }
 
-    /**
-     * Link an existing project by name (case-insensitive) or auto-register a new one.
-     */
-    private function resolveProject(?string $name): ?Project
+    private function ownedProject(?int $id): ?Project
     {
-        if ($name === null || trim($name) === '') {
-            return null;
-        }
-
-        $name = trim($name);
-        $ownerId = $this->ownerId();
-
-        $project = Project::query()
-            ->where('user_id', $ownerId)
-            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
-            ->first();
-
-        if ($project === null) {
-            $project = Project::query()->create([
-                'user_id' => $ownerId,
-                'name' => $name,
-                'sort_order' => (int) Project::query()->where('user_id', $ownerId)->max('sort_order') + 1,
-            ]);
-            $this->registered[] = "Project: {$name}";
-            $this->activity->log(ActivityLog::CREATED, $name, 'Project auto-registered from a task card');
-        }
-
-        return $project;
+        return $id === null ? null : Project::query()->where('user_id', $this->ownerId())->findOrFail($id);
     }
 
-    /**
-     * Link an existing PIC by name (case-insensitive) or auto-register a new one.
-     */
-    private function resolveMember(?string $name): ?TeamMember
+    private function ownedMember(?int $id): ?TeamMember
     {
-        if ($name === null || trim($name) === '') {
-            return null;
-        }
-
-        $name = trim($name);
-        $ownerId = $this->ownerId();
-
-        $member = TeamMember::query()
-            ->where('user_id', $ownerId)
-            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
-            ->first();
-
-        if ($member === null) {
-            $member = TeamMember::query()->create([
-                'user_id' => $ownerId,
-                'name' => $name,
-                'sort_order' => (int) TeamMember::query()->where('user_id', $ownerId)->max('sort_order') + 1,
-            ]);
-            $this->registered[] = "PIC: {$name}";
-            $this->activity->log(ActivityLog::PIC_ADDED, $name, 'Auto-registered from a task card');
-        }
-
-        return $member;
+        return $id === null ? null : TeamMember::query()->where('user_id', $this->ownerId())->findOrFail($id);
     }
 
     /**

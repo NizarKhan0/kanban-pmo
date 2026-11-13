@@ -61,11 +61,12 @@ class AnalyticsAndStandupTest extends TestCase
     public function test_board_actions_are_logged_automatically(): void
     {
         TeamMember::query()->create(['user_id' => $this->user->id, 'name' => 'Ikhwan A.', 'is_me' => true]);
+        $afqah = TeamMember::query()->create(['user_id' => $this->user->id, 'name' => 'Afqah N.']);
 
         $board = Livewire::test(KanbanBoard::class)
             ->call('createTask', $this->cols['To Do']->id)
             ->set('taskForm.title', 'FPX payment integration')
-            ->set('taskForm.pic_name', 'Afqah N.')
+            ->set('taskForm.team_member_id', (string) $afqah->id)
             ->set('taskForm.newSubtask', 'Sandbox')
             ->call('addSubtaskRow')
             ->call('saveTask')
@@ -90,7 +91,7 @@ class AnalyticsAndStandupTest extends TestCase
         $logs = ActivityLog::query()->where('user_id', $this->user->id)->orderBy('id')->get();
 
         $this->assertSame(
-            ['pic_added', 'created', 'updated', 'moved', 'col_added', 'deleted', 'pic_added'],
+            ['created', 'updated', 'moved', 'col_added', 'deleted', 'pic_added'],
             $logs->pluck('action_type')->all(),
         );
         $this->assertSame(['Ikhwan A.'], $logs->pluck('actor_name')->unique()->values()->all(), 'Actor is the PIC marked as Me');

@@ -40,15 +40,20 @@ class TasksAndSubtasksTest extends TestCase
         $this->cols = BoardColumn::query()->where('user_id', $this->user->id)->get()->keyBy('name')->all();
     }
 
-    public function test_create_task_with_subtasks_and_auto_registration(): void
+    public function test_create_task_with_subtasks_using_roster_dropdowns(): void
     {
+        $project = Project::query()->create(['user_id' => $this->user->id, 'name' => 'eMyHaji 2.0']);
+        $member = TeamMember::query()->create(['user_id' => $this->user->id, 'name' => 'Afqah N.']);
+
         Livewire::test(KanbanBoard::class)
             ->call('createTask', $this->cols['To Do']->id)
             ->assertSet('showTaskModal', true)
             ->assertSet('taskForm.board_column_id', $this->cols['To Do']->id)
+            ->assertSee('No project')
+            ->assertSee('Unassigned')
             ->set('taskForm.title', 'FPX payment integration')
-            ->set('taskForm.project_name', 'eMyHaji 2.0')
-            ->set('taskForm.pic_name', 'Afqah N.')
+            ->set('taskForm.project_id', (string) $project->id)
+            ->set('taskForm.team_member_id', (string) $member->id)
             ->set('taskForm.priority', 'high')
             ->set('taskForm.tags', 'payment, #FPX, payment, ')
             ->set('taskForm.newSubtask', 'Register sandbox')
@@ -65,10 +70,7 @@ class TasksAndSubtasksTest extends TestCase
             ->assertSee('AN');
 
         $task = Task::query()->where('user_id', $this->user->id)->with('subtasks')->sole();
-        $project = Project::query()->where('user_id', $this->user->id)->sole();
-        $member = TeamMember::query()->where('user_id', $this->user->id)->sole();
 
-        $this->assertSame('eMyHaji 2.0', $project->name);
         $this->assertSame($project->id, $task->project_id);
         $this->assertSame('eMyHaji 2.0', $task->project_name_snapshot);
         $this->assertSame($member->id, $task->team_member_id);
@@ -77,17 +79,69 @@ class TasksAndSubtasksTest extends TestCase
         $this->assertCount(2, $task->subtasks);
         $this->assertSame(50, $task->progressPercentage());
 
-        // Existing names are linked case-insensitively, not duplicated.
+        // No free text: nothing new is registered from the Task Modal.
+        $this->assertSame(1, Project::query()->where('user_id', $this->user->id)->count());
+        $this->assertSame(1, TeamMember::query()->where('user_id', $this->user->id)->count());
+
+        // Unassigned / no project is allowed.
         Livewire::test(KanbanBoard::class)
             ->call('createTask')
-            ->set('taskForm.title', 'Second task')
-            ->set('taskForm.project_name', 'EMYHAJI 2.0')
-            ->set('taskForm.pic_name', 'afqah n.')
+            ->set('taskForm.title', 'Unassigned task')
+            ->set('taskForm.project_id', '')
+            ->set('taskForm.team_member_id', '')
             ->call('saveTask')
             ->assertHasNoErrors();
 
-        $this->assertSame(1, Project::query()->where('user_id', $this->user->id)->count());
-        $this->assertSame(1, TeamMember::query()->where('user_id', $this->user->id)->count());
+        $unassigned = Task::query()->where('title', 'Unassigned task')->sole();
+        $this->assertNull($unassigned->project_id);
+        $this->assertNull($unassigned->team_member_id);
+        $this->assertNull($unassigned->pic_name_snapshot);
+    }
+
+    public function test_dropdowns_reject_other_workspaces_records(): void
+    {
+        $other = User::factory()->create();
+        $foreignProject = Project::query()->create(['user_id' => $other->id, 'name' => 'Foreign project']);
+        $foreignMember = TeamMember::query()->create(['user_id' => $other->id, 'name' => 'Foreign PIC']);
+
+        Livewire::test(KanbanBoard::class)
+            ->call('createTask')
+            ->assertDontSee('Foreign project')
+            ->assertDontSee('Foreign PIC')
+            ->set('taskForm.title', 'Sneaky')
+            ->set('taskForm.project_id', (string) $foreignProject->id)
+            ->set('taskForm.team_member_id', (string) $foreignMember->id)
+            ->call('saveTask')
+            ->assertHasErrors(['taskForm.project_id' => 'exists', 'taskForm.team_member_id' => 'exists']);
+
+        $this->assertSame(0, Task::query()->count());
+    }
+
+    public function test_editing_a_card_keeps_the_former_pic_until_reassigned(): void
+    {
+        $member = TeamMember::query()->create(['user_id' => $this->user->id, 'name' => 'Farah L.']);
+        $replacement = TeamMember::query()->create(['user_id' => $this->user->id, 'name' => 'Haziq M.']);
+        $task = $this->makeTask('Requirements', 'To Do', member: $member);
+        $member->delete(); // nullOnDelete — snapshot keeps "Farah L."
+
+        $component = Livewire::test(KanbanBoard::class)
+            ->call('editTask', $task->id)
+            ->assertSet('taskForm.team_member_id', null)
+            ->assertSet('taskForm.former_pic', 'Farah L.')
+            ->assertSee('Former PIC:')
+            ->set('taskForm.title', 'Requirements v2')
+            ->call('saveTask')
+            ->assertHasNoErrors();
+
+        $this->assertSame('Farah L.', $task->fresh()?->pic_name_snapshot, 'Saving without reassigning keeps the history');
+
+        $component->call('editTask', $task->id)
+            ->set('taskForm.team_member_id', (string) $replacement->id)
+            ->call('saveTask');
+
+        $task->refresh();
+        $this->assertSame($replacement->id, $task->team_member_id);
+        $this->assertSame('Haziq M.', $task->pic_name_snapshot);
     }
 
     public function test_validation(): void

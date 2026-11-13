@@ -115,8 +115,9 @@ class AiOmnichannelHubTest extends TestCase
 
     public function test_capture_tasks_from_notes_and_add_to_board(): void
     {
-        TeamMember::query()->create(['user_id' => $this->user->id, 'name' => 'Afqah N.']);
-        Project::query()->create(['user_id' => $this->user->id, 'name' => 'eMyHaji 2.0']);
+        $afqah = TeamMember::query()->create(['user_id' => $this->user->id, 'name' => 'Afqah N.']);
+        $farah = TeamMember::query()->create(['user_id' => $this->user->id, 'name' => 'Farah L.']);
+        $project = Project::query()->create(['user_id' => $this->user->id, 'name' => 'eMyHaji 2.0']);
 
         $hub = Livewire::test(AiOmnichannelHub::class)
             ->call('setAction', 'capture')
@@ -132,16 +133,45 @@ class AiOmnichannelHubTest extends TestCase
         $this->assertSame(Carbon::parse(Task::today())->next('Friday')->toDateString(), $tasks[0]['due_date']);
         $this->assertSame('Haziq', $tasks[1]['pic']);
 
+        // Roster matches are pre-selected; "Haziq" is not on the roster, so the row stays unassigned.
+        $hub->assertSet('captureMembers.0', $afqah->id)
+            ->assertSet('captureProjects.0', $project->id)
+            ->assertSet('captureMembers.1', null)
+            ->assertSee('From notes: “Haziq” — not on the roster', false);
+
+        // The user corrects the PIC of row 2 before adding.
         $hub->set('captureColumnId', $this->cols['To Do']->id)
-            ->set('captureSelected.1', false)
+            ->set('captureMembers.1', (string) $farah->id)
             ->call('applyCapture')
+            ->assertHasNoErrors()
             ->assertSet('aiResult', null);
 
-        $created = Task::query()->where('user_id', $this->user->id)->sole();
-        $this->assertSame('Finish FPX callback handling for eMyHaji 2.0', $created->title);
-        $this->assertSame($this->cols['To Do']->id, $created->board_column_id);
-        $this->assertSame(['ai-capture'], $created->tags);
-        $this->assertNotNull($created->team_member_id);
+        $created = Task::query()->where('user_id', $this->user->id)->orderBy('id')->get();
+        $this->assertCount(2, $created);
+        $this->assertSame('Finish FPX callback handling for eMyHaji 2.0', $created[0]->title);
+        $this->assertSame([$afqah->id, $project->id], [$created[0]->team_member_id, $created[0]->project_id]);
+        $this->assertSame($farah->id, $created[1]->team_member_id);
+        $this->assertSame(['ai-capture'], $created[0]->tags);
+
+        // Nothing is auto-registered from the notes.
+        $this->assertSame(['Afqah N.', 'Farah L.'], TeamMember::query()->where('user_id', $this->user->id)->orderBy('id')->pluck('name')->all());
+        $this->assertSame(1, Project::query()->where('user_id', $this->user->id)->count());
+    }
+
+    public function test_capture_rejects_another_workspaces_pic(): void
+    {
+        $foreign = TeamMember::query()->create(['user_id' => User::factory()->create()->id, 'name' => 'Foreign PIC']);
+
+        Livewire::test(AiOmnichannelHub::class)
+            ->call('setAction', 'capture')
+            ->set('aiNotes', '- Prepare the release checklist tomorrow')
+            ->call('runAi')
+            ->set('captureColumnId', $this->cols['To Do']->id)
+            ->set('captureMembers.0', (string) $foreign->id)
+            ->call('applyCapture')
+            ->assertHasErrors('captureMembers.0');
+
+        $this->assertSame(0, Task::query()->where('user_id', $this->user->id)->count());
     }
 
     public function test_break_into_subtasks_and_improve_task(): void

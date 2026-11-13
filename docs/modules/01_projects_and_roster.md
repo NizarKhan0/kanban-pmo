@@ -1,6 +1,6 @@
 # Modul 01: Projects & Team Roster (PIC Management)
 
-Rujuk `AGENT.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 01: Projects & Team Roster** dengan mematuhi 100% English Web UI, Strict Multi-Tenancy, dan Mandatori Full CRUD:
+Rujuk `CLAUDE.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 01: Projects & Team Roster** dengan mematuhi 100% English Web UI, Strict Multi-Tenancy, dan Mandatori Full CRUD:
 
 ### 1. Data Layer (Migrations & Schema — Lengkap Medan UX)
 
@@ -34,3 +34,12 @@ Rujuk `AGENT.md` dan `docs/ARCHITECTURE.md`. Bina **Modul 01: Projects & Team Ro
 ### 4. Verification Layer (Database Seeder)
 
 - `PmoRosterProjectSeeder.php`: Jana 6 projek contoh (`eMyHaji 2.0`, `MyResearch`, `ePJS`, `MyWarga`, `SPK-KuliM`, `eBantuanJKM 2.0`) dan 4 ahli pasukan (`Ikhwan A. - PMO Officer [is_me=true]`, `Afqah N. - Developer`, `Haziq M. - QA / Tester`, `Farah L. - Business Analyst`) untuk `user_id = 1`.
+
+### 5. Nota Pelaksanaan (dikemas kini selepas pembinaan)
+
+- Halaman: `/pmo/roster` (`pmo.roster`). Komponen: `RosterProjectIndex`; service: `ProjectService`, `TeamRosterService`, `WorkloadCalculator`.
+- "Overloaded PIC" = PIC aktif dengan tugasan terbuka ≥ `PMO_PIC_OVERLOAD_THRESHOLD` (lalai 5).
+- `workloadStats()` dan kemas kini `pic_name_snapshot` bergantung pada jadual `tasks` (Modul 03). Guard `App\Support\TaskTable` memastikan ciri ini berfungsi secara automatik apabila jadual itu wujud.
+- SOP Kekal Sejarah turut digunakan pada projek (`project_name_snapshot`).
+- Kod projek ditukar ke huruf besar dan unik bagi setiap pengguna.
+- Seeder menyokong `->forOwner($userId)` (digunakan oleh Reset Workspace, Modul 06).

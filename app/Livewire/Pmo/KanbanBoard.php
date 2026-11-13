@@ -375,9 +375,6 @@ class KanbanBoard extends Component
         }
 
         $text = "\"{$task->title}\" has been saved.";
-        if ($registered = $service->registered()) {
-            $text .= ' Newly registered — '.implode(', ', $registered).'.';
-        }
 
         Flux::toast(variant: 'success', heading: $heading, text: $text);
 
