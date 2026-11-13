@@ -23,16 +23,17 @@
     --color-zinc-900: #171717;
     --color-zinc-950: #0a0a0a;
 
-    --color-accent: var(--color-neutral-800);
-    --color-accent-content: var(--color-neutral-800);
+    /* Neo brand accent (Flux primary buttons, focus rings, links). */
+    --color-accent: #8b5cf6;
+    --color-accent-content: #7c3aed;
     --color-accent-foreground: var(--color-white);
 }
 
 @layer theme {
     .dark {
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
+        --color-accent: #8b5cf6;
+        --color-accent-content: #c4b5fd;
+        --color-accent-foreground: var(--color-white);
     }
 }
 

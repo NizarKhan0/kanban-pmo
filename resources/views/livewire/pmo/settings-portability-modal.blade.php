@@ -14,7 +14,7 @@
     $rowBtn = 'rounded-lg px-2 py-1 text-xs font-semibold transition';
 @endphp
 
-<div x-data x-on:pmo-apply-theme.window="$flux.appearance = $event.detail.theme">
+<section class="w-full" x-data x-on:pmo-apply-theme.window="$flux.appearance = $event.detail.theme">
 
     {{-- ═══════════ Restore — confirmation (stacked) ═══════════ --}}
     <x-pmo.modal show="showRestoreModal" title="Restore Snapshot" max-width="max-w-md" close="closeConfirm" :stacked="true">
@@ -95,8 +95,12 @@
         </div>
     </x-pmo.modal>
 
-    {{-- ═══════════ Main modal ═══════════ --}}
-    <x-pmo.modal show="showModal" title="Settings & Data Portability" subtitle="Back up, export, import and restore your workspace." max-width="max-w-4xl">
+    {{-- ═══════════ Page body (Settings › Data & Backup) ═══════════ --}}
+    @include('partials.settings-heading')
+
+    <flux:heading level="2" class="sr-only">Settings &amp; Data Portability</flux:heading>
+
+    <x-settings.layout heading="Data & Backup" subheading="Back up, export, import and restore your workspace." :wide="true">
         <div class="space-y-5">
 
             {{-- KPI strip --}}
@@ -115,22 +119,8 @@
             </dl>
 
             <div class="grid gap-4 md:grid-cols-2">
-                {{-- Appearance --}}
-                <div class="{{ $section }}">
-                    <h3 class="{{ $h3 }}">Appearance</h3>
-                    <div class="flex rounded-xl border border-zinc-200 bg-zinc-50 p-1 dark:border-white/10 dark:bg-[#07040f]" role="radiogroup" aria-label="Theme">
-                        @foreach (['light' => '☀️ Light', 'dark' => '🌙 Dark', 'system' => '💻 System'] as $mode => $text)
-                            <button type="button" role="radio" x-on:click="$flux.appearance = '{{ $mode }}'"
-                                x-bind:aria-checked="$flux.appearance === '{{ $mode }}'"
-                                x-bind:class="$flux.appearance === '{{ $mode }}' ? 'bg-white text-zinc-900 shadow-sm dark:bg-[#8b5cf6]/25 dark:text-white' : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'"
-                                class="flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition">{{ $text }}</button>
-                        @endforeach
-                    </div>
-                    <p class="text-[11px] text-zinc-500 dark:text-zinc-400">Saved in this browser. Applied instantly — no reload.</p>
-                </div>
-
                 {{-- Export --}}
-                <div class="{{ $section }}">
+                <div class="{{ $section }} md:col-span-2">
                     <h3 class="{{ $h3 }}">Export</h3>
                     <div class="flex flex-wrap gap-2">
                         <button type="button" x-on:click="$wire.exportJson($flux.dark ? 'dark' : 'light')" class="{{ $btnGhost }}">⬇️ Export JSON</button>
@@ -236,9 +226,6 @@
                 <button type="button" wire:click="startReset" class="{{ $btnDanger }}">Reset Workspace to Sample Data</button>
             </div>
 
-            <div class="flex justify-end">
-                <button type="button" wire:click="closeModals" class="{{ $btnGhost }}">Close</button>
-            </div>
         </div>
-    </x-pmo.modal>
-</div>
+    </x-settings.layout>
+</section>

@@ -13,26 +13,27 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
-use Livewire\Attributes\On;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Settings & Data Portability: snapshots (CRUD + restore), JSON/CSV export,
- * JSON import, theme switch and reset-to-sample with layered confirmation.
+ * Settings › Data & Backup (Module 06 "Settings & Data Portability"): snapshots
+ * (CRUD + restore), JSON/CSV export, JSON import and reset-to-sample with layered
+ * confirmation. Rendered as a page in the settings area (route `data.edit`); the
+ * theme switch lives on Settings › Appearance.
  *
  * @property-read Collection<int, WorkspaceBackup> $snapshots
  * @property-read array{columns: int, tasks: int, people: int, projects: int} $board
  */
+#[Title('Data & Backup')]
 class SettingsPortabilityModal extends Component
 {
     use WithFileUploads;
 
     public const RESET_PHRASE = 'RESET';
-
-    public bool $showModal = false;
 
     public string $snapshotNote = '';
 
@@ -50,7 +51,7 @@ class SettingsPortabilityModal extends Component
 
     public string $editingNote = '';
 
-    // ── Confirmations (stacked over the main modal) ──────────────────
+    // ── Confirmation modals ──────────────────────────────────────────
     public bool $showRestoreModal = false;
 
     public bool $showDeleteModal = false;
@@ -69,15 +70,6 @@ class SettingsPortabilityModal extends Component
     public bool $resetAcknowledge = false;
 
     public string $resetPhrase = '';
-
-    #[On('open-settings-portability')]
-    public function open(): void
-    {
-        $this->resetErrorBag();
-        $this->snapshotNote = '';
-        $this->cancelEdit();
-        $this->showModal = true;
-    }
 
     // ──────────────────────────────────────────────────────────────────
     // Read
@@ -328,13 +320,12 @@ class SettingsPortabilityModal extends Component
         $this->resetErrorBag(['resetAcknowledge', 'resetPhrase']);
     }
 
+    /**
+     * Escape / backdrop handler shared by the pmo modal component.
+     */
     public function closeModals(): void
     {
         $this->closeConfirm();
-        $this->cancelEdit();
-        $this->reset('importFile', 'importConfirm');
-        $this->resetErrorBag();
-        $this->showModal = false;
     }
 
     public function render(): View

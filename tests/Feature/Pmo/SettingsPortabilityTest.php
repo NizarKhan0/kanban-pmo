@@ -40,22 +40,29 @@ class SettingsPortabilityTest extends TestCase
         Livewire::test(KanbanBoard::class); // default 5 columns
     }
 
-    public function test_modal_is_available_from_every_page(): void
+    public function test_data_and_backup_lives_in_settings(): void
     {
-        $this->get(route('pmo.board'))
+        $this->get(route('data.edit'))
             ->assertOk()
             ->assertSeeLivewire(SettingsPortabilityModal::class)
-            ->assertSee('Settings &amp; Data', false);
-
-        Livewire::test(SettingsPortabilityModal::class)
-            ->dispatch('open-settings-portability')
-            ->assertSet('showModal', true)
-            ->assertSee('Settings &amp; Data Portability', false)
+            ->assertSee('Data &amp; Backup', false)
             ->assertSee('Create Snapshot Backup')
             ->assertSee('Export JSON')
             ->assertSee('Import JSON')
             ->assertSee('Export CSV')
-            ->assertSee('Reset Workspace to Sample Data');
+            ->assertSee('Reset Workspace to Sample Data')
+            ->assertDontSee('System</button>', false); // theme lives on Settings › Appearance
+
+        // Reachable from every settings tab; no longer a global sidebar modal.
+        $this->get(route('profile.edit'))->assertOk()->assertSee(route('data.edit'), false);
+        $this->get(route('pmo.board'))->assertOk()->assertDontSeeLivewire(SettingsPortabilityModal::class);
+    }
+
+    public function test_guests_cannot_open_data_and_backup(): void
+    {
+        auth()->logout();
+
+        $this->get(route('data.edit'))->assertRedirect(route('login'));
     }
 
     // ── Original Kanban_PMO_Neo.html compatibility ───────────────────
