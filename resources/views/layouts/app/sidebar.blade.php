@@ -15,8 +15,17 @@
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="view-columns" :href="route('pmo.board')" :current="request()->routeIs('pmo.board')" wire:navigate>
+                    <flux:sidebar.item icon="view-columns" :href="route('pmo.board')" :current="request()->routeIs('pmo.board') && request('view', 'all') === 'all'" wire:navigate>
                         {{ __('Kanban Board') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="user-circle" :href="route('pmo.board', ['view' => 'my'])" :current="request()->routeIs('pmo.board') && request('view') === 'my'" wire:navigate>
+                        {{ __('My Tasks') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="clock" :href="route('pmo.board', ['view' => 'due'])" :current="request()->routeIs('pmo.board') && request('view') === 'due'" wire:navigate>
+                        {{ __('Overdue / Due') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="check-circle" :href="route('pmo.board', ['view' => 'completed'])" :current="request()->routeIs('pmo.board') && request('view') === 'completed'" wire:navigate>
+                        {{ __('Completed') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="users" :href="route('pmo.roster')" :current="request()->routeIs('pmo.roster')" wire:navigate>
                         {{ __('Projects & Roster') }}

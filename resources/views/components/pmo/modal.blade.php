@@ -3,20 +3,22 @@
     'title',
     'subtitle' => null,
     'maxWidth' => 'max-w-lg',
+    'close' => 'closeModals',
+    'stacked' => false,
 ])
 
 <div
     x-cloak
     x-show="$wire.{{ $show }}"
-    x-on:keydown.escape.window="if ($wire.{{ $show }}) $wire.closeModals()"
-    class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+    x-on:keydown.escape.window="if ($wire.{{ $show }} && ! $event.defaultPrevented) { $event.preventDefault(); $wire.{{ $close }}() }"
+    @class(['fixed inset-0 flex items-end justify-center p-4 sm:items-center', $stacked ? 'z-[60]' : 'z-50'])
     role="dialog"
     aria-modal="true"
 >
     <div
         x-show="$wire.{{ $show }}"
         x-transition.opacity
-        x-on:click="$wire.closeModals()"
+        x-on:click="$wire.{{ $close }}()"
         class="absolute inset-0 bg-[#07040f]/70 backdrop-blur-sm"
     ></div>
 
@@ -45,7 +47,7 @@
             </div>
             <button
                 type="button"
-                x-on:click="$wire.closeModals()"
+                x-on:click="$wire.{{ $close }}()"
                 class="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-white/10 dark:hover:text-white"
                 aria-label="Close"
             >

@@ -248,10 +248,18 @@ final class BoardColumnService
         $changes = ['board_column_id' => $to->id];
 
         if (TaskTable::supports(['priority'])) {
+            $trackCompletion = TaskTable::supports(['completed_at']);
+
             if ($to->is_done_column && ! $from->is_done_column) {
                 $changes['priority'] = 'done';
+                if ($trackCompletion) {
+                    $changes['completed_at'] = now();
+                }
             } elseif ($from->is_done_column && ! $to->is_done_column) {
                 $changes['priority'] = 'medium';
+                if ($trackCompletion) {
+                    $changes['completed_at'] = null;
+                }
             }
         }
 

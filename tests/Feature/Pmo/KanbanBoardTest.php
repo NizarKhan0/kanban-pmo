@@ -9,10 +9,8 @@ use App\Models\BoardColumn;
 use App\Models\User;
 use App\Services\Pmo\BoardColumnService;
 use App\Support\TaskTable;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -179,8 +177,6 @@ class KanbanBoardTest extends TestCase
 
     public function test_wip_limit_and_delete_moves_cards_with_priority_sync(): void
     {
-        $this->createStandInTasksTable();
-
         $user = User::factory()->create();
         $this->actingAs($user);
         Livewire::test(KanbanBoard::class);
@@ -212,8 +208,6 @@ class KanbanBoardTest extends TestCase
 
     public function test_delete_with_cards_requires_valid_target(): void
     {
-        $this->createStandInTasksTable();
-
         $user = User::factory()->create();
         $this->actingAs($user);
         Livewire::test(KanbanBoard::class);
@@ -237,20 +231,5 @@ class KanbanBoardTest extends TestCase
     private function order(User $user): array
     {
         return BoardColumn::query()->where('user_id', $user->id)->orderBy('sort_order')->pluck('id')->map(fn ($id): int => (int) $id)->values()->all();
-    }
-
-    private function createStandInTasksTable(): void
-    {
-        Schema::create('tasks', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('board_column_id')->constrained()->cascadeOnDelete();
-            $table->string('title');
-            $table->string('priority')->default('medium');
-            $table->integer('sort_order')->default(0);
-            $table->timestamps();
-        });
-
-        TaskTable::flush();
     }
 }

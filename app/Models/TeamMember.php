@@ -70,8 +70,16 @@ class TeamMember extends Model
      */
     public function initials(): string
     {
+        return self::initialsFor($this->name);
+    }
+
+    /**
+     * Two-letter initials for any name (also used for preserved PIC snapshots).
+     */
+    public static function initialsFor(string $name): string
+    {
         $words = array_values(array_filter(
-            preg_split('/\s+/u', trim((string) preg_replace('/[^\p{L}\s]/u', ' ', $this->name))) ?: [],
+            preg_split('/\s+/u', trim((string) preg_replace('/[^\p{L}\s]/u', ' ', $name))) ?: [],
             static fn (string $word): bool => $word !== '',
         ));
 

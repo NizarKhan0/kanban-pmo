@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PmoRosterProjectSeeder::class,
             BoardColumnSeeder::class,
+            TaskSeeder::class,
         ]);
     }
 }

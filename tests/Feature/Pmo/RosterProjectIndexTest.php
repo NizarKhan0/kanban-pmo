@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature\Pmo;
 
 use App\Livewire\Pmo\RosterProjectIndex;
+use App\Models\BoardColumn;
 use App\Models\Project;
 use App\Models\TeamMember;
 use App\Models\User;
 use App\Support\TaskTable;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -179,15 +178,15 @@ class RosterProjectIndexTest extends TestCase
 
     public function test_pic_history_preservation_sop(): void
     {
-        $this->createStandInTasksTable();
-
         $user = User::factory()->create();
         $this->actingAs($user);
 
         $member = TeamMember::query()->create(['user_id' => $user->id, 'name' => 'Haziq M.']);
         $project = Project::query()->create(['user_id' => $user->id, 'name' => 'ePJS']);
 
-        $base = ['user_id' => $user->id, 'team_member_id' => $member->id, 'project_id' => $project->id,
+        $column = BoardColumn::query()->create(['user_id' => $user->id, 'name' => 'In Progress']);
+
+        $base = ['user_id' => $user->id, 'board_column_id' => $column->id, 'team_member_id' => $member->id, 'project_id' => $project->id,
             'pic_name_snapshot' => 'Haziq M.', 'project_name_snapshot' => 'ePJS'];
         DB::table('tasks')->insert([
             [...$base, 'title' => 'Open', 'priority' => 'high', 'due_date' => null],
@@ -217,23 +216,5 @@ class RosterProjectIndexTest extends TestCase
             ->call('destroy');
 
         $this->assertSame(3, DB::table('tasks')->whereNull('project_id')->where('project_name_snapshot', 'ePJS')->count());
-    }
-
-    private function createStandInTasksTable(): void
-    {
-        Schema::create('tasks', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('project_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('team_member_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('title');
-            $table->string('priority')->default('medium');
-            $table->date('due_date')->nullable();
-            $table->string('pic_name_snapshot')->nullable();
-            $table->string('project_name_snapshot')->nullable();
-            $table->timestamps();
-        });
-
-        TaskTable::flush();
     }
 }
